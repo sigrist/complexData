@@ -124,15 +124,12 @@ calculaPrecisao <- function(anoMes, resultado) {
 
 # Distancia L1 - metodo manhattan
 distanciaL1 <- function(v1, v2) {
-  x <- rbind(v1,v2)
-  dist(x, method ="manhattan")
+  dist(rbind(v1,v2), method = "manhattan")
 }
 
 # Distancia L1 - metodo euclidean
 distanciaL2 <- function(v1, v2) {
-  # TODO  
-  x <- rbind(v1,v2)
-  dist(x, method ="euclidean")
+  dist(rbind(v1,v2), method = "euclidean")
 }
 
 distanciaLInf <- function(v1, v2) {
