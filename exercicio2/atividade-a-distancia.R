@@ -1,63 +1,57 @@
 # Carrega localmente as medidas de temperatura
+#
+# Returns:
+#  Data frame com medidas de temperatura obtidas do cepagri
 carregaArquivos <- function() {
   con <- url("http://www.ic.unicamp.br/~zanoni/cepagri/cepagri.csv") 
   cpa <- read.csv(con, header = FALSE, sep = ";",col.names = c("horario","temperatura","vento","umidade","sensacao"), as.is = TRUE)  
 }
 
 
-# Gera uma serie temporal para cada dia de medidas
-# Uma serie contem 24 medidas
-# O resultado da funcao eh uma matriz de 24 colunas e N linhas, onde linhas eh a quantidade de dias processados
-# Caso estejam incompletos, o primeiro e o ultimo dia da serie sao eliminados
+# Gera uma serie temporal para cada dia de medidas. Uma serie contem 24 medidas
+#
+# Args:
+#  cpa: Data frame com medidas de temperatura obtidas do cepagri
+# Returns:
+#  matriz de 24 colunas e N linhas, onde as colunas sao as horas do dia e as linhas sao os dias
 geraSeries <- function (cpa) {
+  # Transforma horario em formato de data para facilitar manipulacao
   horarios = strptime(cpa[["horario"]], "%d/%m/%Y-%H:%M")
+  
+  # Transforma temperaturas em numerico
   temperaturas = as.numeric(cpa[["temperatura"]])
   
-  ultimoAno = 0
-  ultimoDiaDoAno = 0
-  serieDiaAtual = 0
-  dias = 0
-  qtdeDias = 0
-  nomeDias = ""
+  # Obtem a media de cada hora, assim cada serie diaria tera 24 horas
+  datasComHoraCheia = paste(as.Date(horarios), formatC(horarios[["hour"]], width = 2, flag = "0"))
+  temperaturasPorHora = tapply(temperaturas, datasComHoraCheia, mean)
   
-  for (i in 1:length(horarios)) {
-    horario = horarios[i]
-    
-    # Verifica se continua processando o mesmo dia do ano ou foi para o proximo
-    if (!(horario$year == ultimoAno & horario$yday == ultimoDiaDoAno)) {
-      # Atualiza variaveis de controle
-      ultimoAno = horario$year
-      ultimoDiaDoAno = horario$yday
-      
-      # Prenche serie apenas se nao eh a primeira vez dentro do for
-      qtdeDias = qtdeDias + 1
-      if (length(serieDiaAtual) > 1) {
-        # print(serieDiaAtual)
-        if (length(dias) == 1) {
-          # Inicializa a matriz das series temporais de cada dia
-          dias = matrix(serieDiaAtual, ncol = 24)
-          nomeDias = nomeDia
-        } else {
-          # Adiciona uma nova linha na matriz das series temporaris
-          dias = rbind(dias, serieDiaAtual)
-          nomeDias[length(nomeDias) + 1] = nomeDia
-        }
-      }
-      
-      # Cria uma serie para processar o dia
-      serieDiaAtual = rep(NA, 24)
-      nomeDia = format(horario, "%Y-%m-%d")
-    }
-    
-    # Atualiza a temperatura para o dia que esta sendo processado
-    # TODO tem mais de uma medida por hora, como iremos montar a serie?
-    serieDiaAtual[horario$hour + 1] = temperaturas[i]
-  }
-  rownames(dias) <- nomeDias
-  return(dias)
+  
+  # Separa medidas por dia
+  temperaturasPorDia = split(temperaturasPorHora, as.Date(names(temperaturasPorHora)))
+  temperaturasPorDia = lapply(temperaturasPorDia, signif, digits = 4)
+  
+  # Adiciona zeros para horas sem temperatura
+  temperaturasPorDia = lapply(temperaturasPorDia, function(dia) {
+    horas = strptime(names(dia), "%Y-%m-%d %H")[["hour"]]
+    serieDiaAtual = rep(NA, 24)
+    serieDiaAtual[horas+1] = dia
+    return(serieDiaAtual)
+  });
+  
+  # Cria uma matriz com cada linha sendo a medida de 24 horas de um dia
+  dias = do.call(rbind, temperaturasPorDia)
 }
 
+
 # Pre-processa os dados, removendo valores de temperatura invalidos
+# 
+# Args:
+#  dias: matriz de 24 colunas e N linhas, onde as colunas sao as horas do dia e as linhas sao os dias
+#
+# Returns:
+#  Matriz do mesmo formato da entrada, por??m substituindo NA's pela media dos pontos anterior e posterior
+#  Caso o primeiro dia comece com NA, sera removido do resultado
+#  Caso o ultimo dia termine com NA, sera removido do resultado
 preProcessa <- function(dias) {
   temperaturas = dias
   
@@ -114,10 +108,32 @@ preProcessa <- function(dias) {
   return(temperaturas)
 }
 
+
+# Retorna uma lista de N series de temperatura dada uma serie de um dia como criterio, onde N 
+# eh o parametro numeroRetornados, Os registros sao ordenados do mais similar ao menos similar
+#
+# Args:
+#  criterio: serie de temperaturas de um dia utilizada como criterio de buscas
+#  dias: matriz de 24 colunas e N linhas, onde as colunas sao as horas do dia e as linhas sao os dias
+#  funcaoDistancia: funcao de distancia a ser utilizada. Recebe dois vetores como parametros
+#  funcaoOrdenacao: funcao de ordenacao de resultados a ser utilizado
+#  numeroRetornados: Quantidade de registros retornados
+#
+# Returns:
+#  resultado contendo os N resultados mais proximos do criterio de busca, ordenados com o mais
+#  similar no topo
 buscaSeries <- function(criterio, dias, funcaoDistancia, funcaoOrdenacao, numeroRetornados) {
   # TODO
 }
 
+# Dado um ano/mes e uma lista resultante de uma busca de temperaturas, calcula a precisao @ length(resultado)
+#
+# Args:
+#  anoMes: ano e mes no formato YYYY-mm
+#  resultado: lista resultante de uma busca de temperaturas
+#
+# Returns:
+#  precisao calculada para a busca
 calculaPrecisao <- function(anoMes, resultado) {
   # TODO
 }
@@ -148,17 +164,37 @@ ordenacaoDescendente <- function(resultado) {
   sort(resultado, decreasing = TRUE)
 }
 
+# Dada uma funcao de distancia e outra de ordenacao, calcula precisao media P@30 da colecao toda. 
+# Para realizar o calculo, eh calculada a precisao da busca de cada um dos itens da colecao, e feita a media 
+# de todas as precisoes obtidas
+#
+# Args:
+#  temperaturas: matriz de 24 colunas e N linhas, onde as colunas sao as horas do dia e as linhas sao os dias
+#  funcaoDistancia: funcao de distancia a ser utilizada. Recebe dois vetores como parametros
+#  funcaoOrdenacao: funcao de ordenacao de resultados a ser utilizado
+#
+# Returns: 
+#  precisao media da colecao
 calculaPrecisaoMediaParaTodos <- function(temperaturas, funcaoDistancia, funcaoOrdenacao) {
   # TODO
 }
 
+# Esta funcao carrega e processa os dados de temperatura do cepagri, em seguida exibindo uma comparacao de 
+# eficacia de buscas na colecao utilizando diferentes funcoes de similaridade ou distancia. O criterio de 
+# comparacao eh a precisao media P@30 utilizando cada uma das funcoes de distancia
 exibeResultados <- function() {
   # Obtem e faz pre-processamento das temperaturas
+  cat("Obtendo temperaturas do servidor \n")
   cpa = carregaArquivos()
+  
+  cat("Gerando series temporariais (uma para cada dia) \n")
   temperaturas = geraSeries(cpa)
+  
+  cat("Pre-processando series para eliminar valores invalidos \n")
   temperaturas = preProcessa(temperaturas)
   
   # TODO
+  cat("Calculando precisao media com diferentes funcoes de distancia \n")
   calculaPrecisaoMediaParaTodos(temperaturas, distanciaL1, ordenacaoAscendente)
   calculaPrecisaoMediaParaTodos(temperaturas, distanciaL2, ordenacaoAscendente)
   calculaPrecisaoMediaParaTodos(temperaturas, distanciaLInf, ordenacaoAscendente)
