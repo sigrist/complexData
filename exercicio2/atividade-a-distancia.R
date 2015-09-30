@@ -67,6 +67,7 @@ preProcessa <- function(dias) {
   
   # Transforma temperaturas em um vetor para simplificar o processamento
   dimTemperaturas <- dim(temperaturas)
+  nomeDatas <- rownames(temperaturas)
   dim(temperaturas) <- NULL
   
   # Interpola os valores NA com base nos valores anterior e posterior
@@ -104,6 +105,7 @@ preProcessa <- function(dias) {
   
   # Transforma temperaturas novamente em uma matriz
   dim(temperaturas) <- dimTemperaturas
+  rownames(temperaturas) <- nomeDatas
   
   return(temperaturas)
 }
@@ -123,7 +125,10 @@ preProcessa <- function(dias) {
 #  resultado contendo os N resultados mais proximos do criterio de busca, ordenados com o mais
 #  similar no topo
 buscaSeries <- function(criterio, dias, funcaoDistancia, funcaoOrdenacao, numeroRetornados) {
-  # TODO
+  distancias <- apply(dias, 1, funcaoDistancia, criterio)
+  names(distancias) <- rownames(dias)
+  distancias <- funcaoOrdenacao(distancias)
+  return(distancias[1:numeroRetornados])
 }
 
 # Dado um ano/mes e uma lista resultante de uma busca de temperaturas, calcula a precisao @ length(resultado)
@@ -134,8 +139,50 @@ buscaSeries <- function(criterio, dias, funcaoDistancia, funcaoOrdenacao, numero
 #
 # Returns:
 #  precisao calculada para a busca
-calculaPrecisao <- function(anoMes, resultado) {
-  # TODO
+calculaPrecisao <- function(anoMes, resultado, dias) {
+  anoMesResultado <- obtemAnoMes(names(resultado))
+  anoMesColecao <- obtemAnoMes(rownames(temperaturas))
+  total <- min(sum(anoMes == anoMesColecao), length(resultado))
+  acertos <- sum(anoMes == anoMesResultado)
+  precisao <-acertos/total
+  return(precisao)
+}
+
+# Busca as series mais semelhantes a serie passada como criterio e retorna a precisao para a busca efetuada
+# 
+# Args:
+#  criterio: serie de temperaturas de um dia utilizada como criterio de buscas
+#  nomeCriterio: nome do criterio, no formato de data string YYYY-mm-dd
+#  dias: matriz de 24 colunas e N linhas, onde as colunas sao as horas do dia e as linhas sao os dias
+#  funcaoDistancia: funcao de distancia a ser utilizada. Recebe dois vetores como parametros
+#  funcaoOrdenacao: funcao de ordenacao de resultados a ser utilizado
+#  numeroRetornados: Quantidade de registros retornados
+calculaPrecisaoSerie <- function(criterio, nomeCriterio, dias, funcaoDistancia, funcaoOrdenacao, numeroRetornados) {
+  resultado <- buscaSeries(criterio, dias, funcaoDistancia, funcaoOrdenacao, numeroRetornados)
+  anoMes <- obtemAnoMes(nomeCriterio)
+  return(calculaPrecisao(anoMes, resultado, dias))
+}
+
+# Obtem apenas o mes e ano de uma data string
+#
+# Args:
+#  data: data string no formato YYYY-mm-dd
+#
+# Returns:
+#  ano-mes no formato YYYY-mm
+obtemAnoMes <- function(data) {
+  return(substr(data, 1, 7))
+}
+
+# Formata precisao para exibicao em percentual
+#
+# Args:
+#  precisao: precisao em decimal de 0 a 1
+#
+# Returns:
+#  precisao formatada como string percentual
+formataPrecisao <- function(precisao) {
+  return(paste(signif(precisao*100,5), "%"))
 }
 
 # Distancia L1 - metodo manhattan
@@ -176,7 +223,8 @@ ordenacaoDescendente <- function(resultado) {
 # Returns: 
 #  precisao media da colecao
 calculaPrecisaoMediaParaTodos <- function(temperaturas, funcaoDistancia, funcaoOrdenacao) {
-  # TODO
+  # TODO conferir se esta funcionando e entender porque esta lento
+  apply(temperaturas, 1, buscaSeries, temperaturas, funcaoDistancia, funcaoOrdenacao, 30)
 }
 
 # Esta funcao carrega e processa os dados de temperatura do cepagri, em seguida exibindo uma comparacao de 
