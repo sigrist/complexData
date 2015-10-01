@@ -188,17 +188,17 @@ formataPrecisao <- function(precisao) {
 
 # Distancia L1 - metodo manhattan
 distanciaL1 <- function(v1, v2) {
-  dist(rbind(v1,v2), method = "manhattan")
+  norm(as.matrix(v1 - v2), type = "o")
 }
 
 # Distancia L2 - metodo euclidean
 distanciaL2 <- function(v1, v2) {
-  
+  norm(as.matrix(v1 - v2), type = "2")
 }
 
 # Distancia maxima entre 2 componentes de X e Y
 distanciaMax <- function(v1, v2) {
-  dist(rbind(v1,v2), method = "maximum")
+  norm(as.matrix(v1 - v2), type = "I")
 }
 
 distanciaCanberra <- function(v1, v2) {
@@ -226,8 +226,13 @@ ordenacaoDescendente <- function(resultado) {
 #  precisao media da colecao
 calculaPrecisaoMediaParaTodos <- function(temperaturas, funcaoDistancia, funcaoOrdenacao = ordenacaoAscendente) {
   # Para cada  linha da matriz temperaturas, calular a distancia com as outras linhas,
-  m <- apply(temperaturas, 1, buscaSeries, temperaturas, funcaoDistancia, funcaoOrdenacao, 30)
-  mean(m)
+  nomeCriterio <- rownames(temperaturas)
+  precisoes <- numeric()
+  for (i in 1:length(nomeCriterio)) {
+    precisao <- calculaPrecisaoSerie(temperaturas[i,], nomeCriterio[i], temperaturas, funcaoDistancia, funcaoOrdenacao, 30)
+    precisoes[i] <- precisao
+  }
+  mean(precisoes)
 }
 
 # Esta funcao carrega e processa os dados de temperatura do cepagri, em seguida exibindo uma comparacao de 
@@ -248,7 +253,7 @@ exibeResultados <- function() {
   # TODO
   cat("Calculando precisao media com diferentes funcoes de distancia \n")
   l1 = calculaPrecisaoMediaParaTodos(temperaturas, distanciaL1)
-  l2 = calculaPrecisaoMediaParaTodos(temperaturas, distanciaL2) # Parou de funcionar (??)
+  l2 = calculaPrecisaoMediaParaTodos(temperaturas, distanciaL2)
   lMax = calculaPrecisaoMediaParaTodos(temperaturas, distanciaMax)
   lCam = calculaPrecisaoMediaParaTodos(temperaturas, distanciaCanberra)
   
@@ -256,7 +261,6 @@ exibeResultados <- function() {
   cat("L2:", l2, "\n")
   cat("Max:", lMax, "\n")
   cat("Camberra:", lCam, "\n")
-  calculaPrecisaoSerie()
 }
 
 # TODO exibeResultados()
