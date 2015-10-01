@@ -68,6 +68,7 @@ preProcessa <- function(dias) {
   # Transforma temperaturas em um vetor para simplificar o processamento
   dimTemperaturas <- dim(temperaturas)
   nomeDatas <- rownames(temperaturas)
+  
   dim(temperaturas) <- NULL
   
   # Interpola os valores NA com base nos valores anterior e posterior
@@ -126,7 +127,7 @@ preProcessa <- function(dias) {
 #  similar no topo
 buscaSeries <- function(criterio, dias, funcaoDistancia, funcaoOrdenacao, numeroRetornados) {
   distancias <- apply(dias, 1, funcaoDistancia, criterio)
-  names(distancias) <- rownames(dias)
+  # names(distancias) <- rownames(dias)
   distancias <- funcaoOrdenacao(distancias)
   return(distancias[1:numeroRetornados])
 }
@@ -137,7 +138,7 @@ buscaSeries <- function(criterio, dias, funcaoDistancia, funcaoOrdenacao, numero
 #  anoMes: ano e mes no formato YYYY-mm
 #  resultado: lista resultante de uma busca de temperaturas
 #
-# Returns:
+# Returns:name
 #  precisao calculada para a busca
 calculaPrecisao <- function(anoMes, resultado, dias) {
   anoMesResultado <- obtemAnoMes(names(resultado))
@@ -190,17 +191,18 @@ distanciaL1 <- function(v1, v2) {
   dist(rbind(v1,v2), method = "manhattan")
 }
 
-# Distancia L1 - metodo euclidean
+# Distancia L2 - metodo euclidean
 distanciaL2 <- function(v1, v2) {
-  dist(rbind(v1,v2), method = "euclidean")
+  
 }
 
-distanciaLInf <- function(v1, v2) {
-  # TODO  
+# Distancia maxima entre 2 componentes de X e Y
+distanciaMax <- function(v1, v2) {
+  dist(rbind(v1,v2), method = "maximum")
 }
 
-distanciaCosseno <- function(v1, v2) {
-  # TODO  
+distanciaCanberra <- function(v1, v2) {
+  dist(rbind(v1,v2), method = "canberra")
 }
 
 ordenacaoAscendente <- function(resultado) {
@@ -222,9 +224,10 @@ ordenacaoDescendente <- function(resultado) {
 #
 # Returns: 
 #  precisao media da colecao
-calculaPrecisaoMediaParaTodos <- function(temperaturas, funcaoDistancia, funcaoOrdenacao) {
-  # TODO conferir se esta funcionando e entender porque esta lento
-  apply(temperaturas, 1, buscaSeries, temperaturas, funcaoDistancia, funcaoOrdenacao, 30)
+calculaPrecisaoMediaParaTodos <- function(temperaturas, funcaoDistancia, funcaoOrdenacao = ordenacaoAscendente) {
+  # Para cada  linha da matriz temperaturas, calular a distancia com as outras linhas,
+  m <- apply(temperaturas, 1, buscaSeries, temperaturas, funcaoDistancia, funcaoOrdenacao, 30)
+  mean(m)
 }
 
 # Esta funcao carrega e processa os dados de temperatura do cepagri, em seguida exibindo uma comparacao de 
@@ -235,6 +238,7 @@ exibeResultados <- function() {
   cat("Obtendo temperaturas do servidor \n")
   cpa = carregaArquivos()
   
+  
   cat("Gerando series temporariais (uma para cada dia) \n")
   temperaturas = geraSeries(cpa)
   
@@ -243,10 +247,16 @@ exibeResultados <- function() {
   
   # TODO
   cat("Calculando precisao media com diferentes funcoes de distancia \n")
-  calculaPrecisaoMediaParaTodos(temperaturas, distanciaL1, ordenacaoAscendente)
-  calculaPrecisaoMediaParaTodos(temperaturas, distanciaL2, ordenacaoAscendente)
-  calculaPrecisaoMediaParaTodos(temperaturas, distanciaLInf, ordenacaoAscendente)
-  calculaPrecisaoMediaParaTodos(temperaturas, distanciaLCosseno, ordenacaoDescendente)
+  l1 = calculaPrecisaoMediaParaTodos(temperaturas, distanciaL1)
+  l2 = calculaPrecisaoMediaParaTodos(temperaturas, distanciaL2) # Parou de funcionar (??)
+  lMax = calculaPrecisaoMediaParaTodos(temperaturas, distanciaMax)
+  lCam = calculaPrecisaoMediaParaTodos(temperaturas, distanciaCanberra)
+  
+  cat("L1:", l1, "\n")
+  cat("L2:", l2, "\n")
+  cat("Max:", lMax, "\n")
+  cat("Camberra:", lCam, "\n")
+  calculaPrecisaoSerie()
 }
 
 # TODO exibeResultados()
