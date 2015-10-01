@@ -1,0 +1,72 @@
+---
+title: "INF-611 - Juntando Dados - Relatório da Atividade à Distância"
+author: "Paulo Sigrist / Rafael Sangalli"
+date: "2 de outubro de 2015"
+output: html_document
+---
+
+```{r echo=FALSE}
+source('./atividade-a-distancia.R')
+```
+
+# Introdução
+
+Este relatório descreve os resultados obtidos para a atividade a distância da disciplina "INF-611 - Juntando Dados", bem como os procedimentos executados para chegar a tais resultados.
+
+O procedimento completo executado pode ser resumidamente descrito pelos passos a seguir:  
+
+* Obtenção dos dados a partir de uma conexão com o servidor  
+* Pré-processamento dos dados
+    + Conversão dos dados em séries de temperaturas para cada um dos dias contidos nos dados
+    + Remoção de valores inválidos (N/A)
+* Cálculo da precisão `P@30` para a busca de uma série de temperaturas utilizando diferentes medidas de distância, em um cenário de busca em que séries de temperatura de um mesmo mês são consideradas relevantes entre si
+* Comparação dos resultados obtidos para cada uma das distâncias
+
+Os capítulos a seguir descrevem em mais detalhes cada um dos passos mencionadas acima.
+
+# Obtenção dos dados
+
+Conforme o enunciado da atividade, os dados utilizados para na atividade foram obtidos da fonte <http://www.ic.unicamp.br/~zanoni/cepagri/cepagri.csv.>. 
+
+Os arquivos foram obtidos a partir de uma conexão direta com o servidor, e carregados em um data frame fazendo uma leitura no formato CSV:
+
+```{r echo=FALSE}
+carregaArquivos
+```
+
+Veja abaixo algumas um trecho das medidas obtidas:
+
+```{r echo=FALSE}
+con <- url("http://www.ic.unicamp.br/~zanoni/cepagri/cepagri.csv") 
+cpa <- read.csv(con, header = FALSE, sep = ";",col.names = c("horario","temperatura","vento","umidade","sensacao"), as.is = TRUE, nrows = 100)  
+head(cpa)
+```
+
+Note que os dados foram propositalmente carregados como `character` antes de serem pré-processados de acordo com o próximo passo.
+
+
+# Pré-processamento
+
+No pré-processamento, as medidas de temperatura foram transformadas em séries, onde cada série é um conjunto de 24 números, representando as 24 horas de um dia. 
+
+Como é possível observar nos dados de entrada, há mais de uma medida por hora. Para transformar cada dia em uma séria de 24 pontos, foi extraída a média de cada hora. Portanto, o resultado da primeira parte do pré-processamento foi uma matriz de 24 colunas por N linhas, onde N é a quantidade total de dias encontrados nos dados de entrada. Para cada linha da matriz, foi dado um `rowname` que é a própria data a qual a linha se refere.
+
+Veja um exemplo de algumas linhas da matriz:
+
+```{r echo=FALSE}
+temperaturas = geraSeries(cpa)
+head(temperaturas)
+```
+
+Após gerar a matriz, o segundo passo do pré-processamento foi a eliminar valores inválidos, ou seja, aqueles com valor `NA`. Para isso, foi feito o seguinte procedimento:
+
+1. Caso o primeiro dia comece com valor `NA`, este é eliminado das séries.
+2. Caso o último dia termine com valor `NA`, este é eliminado das séries.
+3. Para o restante dos dias, cada valor `NA` encontrado é substituído pela média dos pontos imediatamente antes e imediatamente depois.
+4. Caso sejam encontrados 2 ou mais valores `NA` em sequência, estes valores são gerados a partir de uma interpolação dos pontos imediatamente antes e imediatamente depois. 
+
+Terminado este passo, de pré-processamento, a matriz de 24 colunas por N linhas é retornada como resultado do pré-processamento.
+
+# Cálculo da precisão das buscas
+
+
