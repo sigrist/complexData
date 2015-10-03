@@ -50,7 +50,7 @@ Note que os dados foram propositalmente carregados como `character` antes de ser
 
 No pré-processamento, as medidas de temperatura foram transformadas em séries, onde cada série é um conjunto de 24 números, representando as 24 horas de um dia. 
 
-Como é possível observar nos dados de entrada, há mais de uma medida por hora. Para transformar cada dia em uma séria de 24 pontos, foi extraída a média de cada hora. Portanto, o resultado da primeira parte do pré-processamento foi uma matriz de 24 colunas por N linhas, onde N é a quantidade total de dias encontrados nos dados de entrada. Para cada linha da matriz, foi dado um `rowname` que é a própria data a qual a linha se refere.
+Como é possível observar nos dados de entrada, há mais de uma medida por hora. Para transformar cada dia em uma série de 24 pontos, foi extraída a média de cada hora. Portanto, o resultado da primeira parte do pré-processamento foi uma matriz de 24 colunas por N linhas, onde N é a quantidade total de dias encontrados nos dados de entrada. Para cada linha da matriz, foi dado um `rowname` que é a própria data a qual a linha se refere.
 
 Veja um exemplo de algumas linhas da matriz:
 
@@ -73,11 +73,11 @@ Terminado este passo, a matriz de 24 colunas por N linhas é retornada como resu
 
 Foi implementada uma função que, dada uma séria de temperaturas de um dia, eram retornados os resultados que mais se assemelhavam à série de acordo com uma função de distância escolhida. A função recebia como argumento:
 
-- criterio: série de temperaturas de um dia utilizada como critério de buscas
-- dias: matriz de 24 colunas e N linhas, onde as colunas são as horas do dia e as linhas são os dias
-- funcaoDistancia: função de distância a ser utilizada. Recebe dois vetores como parâmetros
-- funcaoOrdenacao: função de ordenação de resultados a ser utilizado. Recebe um vetor como parâmetro.
-- numeroRetornados: Quantidade de registros retornados
+- _criterio_: série de temperaturas de um dia utilizada como critério de buscas
+- _dias_: matriz de 24 colunas e N linhas, onde as colunas são as horas do dia e as linhas são os dias
+- _funcaoDistancia_: função de distância a ser utilizada. Recebe dois vetores como parâmetros
+- _funcaoOrdenacao_: função de ordenação de resultados a ser utilizado. Recebe um vetor como parâmetro.
+- _numeroRetornados_: Quantidade de registros retornados
 
 A função calcula a distância entre o critério e cada um dos dias da matriz, em seguida ordenando os resultados com os mais próximos no topo do resultado. Então são retornados os M primeiros resultados, onde M é o parâmetro `numeroRetornados`. Neste exercício, o parâmetro `numeroRetornados` recebeu sempre o valor 30. Veja abaixo a função que realiza a busca da série:
 
@@ -92,7 +92,7 @@ Uma vez retornado o resultado, é possível calcular a precisão dos 30 valores 
 calculaPrecisao
 ```
 
-A função obtemMesAno apenas extrai da data o ano e mês no formato YYYY-mm.
+A função `obtemMesAno` apenas extrai da data o ano e mês no formato _YYYY-mm_.
 
 # Cálculo das precisões médias
 
