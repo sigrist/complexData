@@ -108,6 +108,12 @@ preProcessa <- function(dias) {
   dim(temperaturas) <- dimTemperaturas
   rownames(temperaturas) <- nomeDatas
   
+  # Remove meses com menos de 20 dias
+  qtdeDiasPorMes <- lapply(split(temperaturas, obtemAnoMes(rownames(temperaturas))), function(l) length(l) / 24)
+  mesesDescartados <- names(qtdeDiasPorMes[qtdeDiasPorMes < 20])
+  linhasDescartadas <- which(!is.na(match(obtemAnoMes(rownames(temperaturas)), mesesDescartados)))
+  temperaturas <- temperaturas[-linhasDescartadas,]
+  
   return(temperaturas)
 }
 
@@ -125,9 +131,8 @@ preProcessa <- function(dias) {
 # Returns:
 #  resultado contendo os N resultados mais proximos do criterio de busca, ordenados com o mais
 #  similar no topo
-buscaSeries <- function(criterio, dias, funcaoDistancia, funcaoOrdenacao, numeroRetornados) {
+buscaSeries <- function(criterio, dias, funcaoDistancia, funcaoOrdenacao, numeroRetornados = 30) {
   distancias <- apply(dias, 1, funcaoDistancia, criterio)
-  # names(distancias) <- rownames(dias)
   distancias <- funcaoOrdenacao(distancias)
   return(distancias[1:numeroRetornados])
 }
@@ -137,6 +142,7 @@ buscaSeries <- function(criterio, dias, funcaoDistancia, funcaoOrdenacao, numero
 # Args:
 #  anoMes: ano e mes no formato YYYY-mm
 #  resultado: lista resultante de uma busca de temperaturas
+#  dias: matriz de 24 colunas e N linhas, onde as colunas sao as horas do dia e as linhas sao os dias
 #
 # Returns:name
 #  precisao calculada para a busca
@@ -146,7 +152,6 @@ calculaPrecisao <- function(anoMes, resultado, dias) {
   total <- min(sum(anoMes == anoMesColecao), length(resultado))
   acertos <- sum(anoMes == anoMesResultado)
   precisao <-acertos/total
-  return(precisao)
 }
 
 # Busca as series mais semelhantes a serie passada como criterio e retorna a precisao para a busca efetuada
@@ -196,13 +201,19 @@ distanciaL2 <- function(v1, v2) {
   norm(as.matrix(v1 - v2), type = "2")
 }
 
-# Distancia maxima entre 2 componentes de X e Y
+# Distancia maxima entre 2 componentes de v1 e v2
 distanciaMax <- function(v1, v2) {
   norm(as.matrix(v1 - v2), type = "I")
 }
 
+# Distancia de Canberra
 distanciaCanberra <- function(v1, v2) {
   dist(rbind(v1,v2), method = "canberra")
+}
+
+# Similaridade pelo cosseno
+distanciaCosseno <- function(v1, v2) {
+  sum(v1*v2)/(norm(v1, type = "2") * norm(v2, type = "2"))
 }
 
 ordenacaoAscendente <- function(resultado) {
@@ -232,7 +243,9 @@ calculaPrecisaoMediaParaTodos <- function(temperaturas, funcaoDistancia, funcaoO
     precisao <- calculaPrecisaoSerie(temperaturas[i,], nomeCriterio[i], temperaturas, funcaoDistancia, funcaoOrdenacao, 30)
     precisoes[i] <- precisao
   }
-  mean(precisoes)
+  
+  # Retorna precisao media por mes
+  return(tapply(precisoes, obtemAnoMes(nomeCriterio), mean))
 }
 
 # Esta funcao carrega e processa os dados de temperatura do cepagri, em seguida exibindo uma comparacao de 
@@ -243,24 +256,26 @@ exibeResultados <- function() {
   cat("Obtendo temperaturas do servidor \n")
   cpa = carregaArquivos()
   
-  
   cat("Gerando series temporariais (uma para cada dia) \n")
-  temperaturas = geraSeries(cpa)
+  temperaturasPre = geraSeries(cpa)
   
   cat("Pre-processando series para eliminar valores invalidos \n")
-  temperaturas = preProcessa(temperaturas)
+  temperaturas = preProcessa(temperaturasPre)
   
-  # TODO
   cat("Calculando precisao media com diferentes funcoes de distancia \n")
   l1 = calculaPrecisaoMediaParaTodos(temperaturas, distanciaL1)
   l2 = calculaPrecisaoMediaParaTodos(temperaturas, distanciaL2)
   lMax = calculaPrecisaoMediaParaTodos(temperaturas, distanciaMax)
   lCam = calculaPrecisaoMediaParaTodos(temperaturas, distanciaCanberra)
+  lCos = calculaPrecisaoMediaParaTodos(temperaturas, distanciaCosseno, ordenacaoDescendente)
   
-  cat("L1:", l1, "\n")
-  cat("L2:", l2, "\n")
-  cat("Max:", lMax, "\n")
-  cat("Camberra:", lCam, "\n")
+  # Monta uma matriz com os resultados de cada distancia e exibe como resultado final
+  resultado <- rbind(l1, l2, lMax, lCam, lCos)
+  medias <- apply(resultado, 1, mean)
+  resultado <- cbind(resultado, medias)
+  print(signif(resultado,3))
+  
+  save(cpa, temperaturasPre, temperaturas, l1, l2, lMax, lCam, lCos, resultado, medias, file = "dados.RData")
 }
 
 # TODO exibeResultados()

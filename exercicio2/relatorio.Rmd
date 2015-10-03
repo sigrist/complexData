@@ -1,12 +1,13 @@
 ---
 title: "INF-611 - Juntando Dados - Relatório da Atividade à Distância"
 author: "Paulo Sigrist / Rafael Sangalli"
-date: "2 de outubro de 2015"
+date: "3 de outubro de 2015"
 output: html_document
 ---
 
 ```{r echo=FALSE}
 source('./atividade-a-distancia.R')
+load('./dados.RData')
 ```
 
 # Introdução
@@ -19,14 +20,16 @@ O procedimento completo executado pode ser resumidamente descrito pelos passos a
 * Pré-processamento dos dados
     + Conversão dos dados em séries de temperaturas para cada um dos dias contidos nos dados
     + Remoção de valores inválidos (N/A)
+    + Remoção de meses com menos de 20 dias de dados
 * Cálculo da precisão `P@30` para a busca de uma série de temperaturas utilizando diferentes medidas de distância, em um cenário de busca em que séries de temperatura de um mesmo mês são consideradas relevantes entre si
+    + Foram utilizadas as distâncias: L1, L2, L infinito, Canberra e Cosseno.
 * Comparação dos resultados obtidos para cada uma das distâncias
 
 Os capítulos a seguir descrevem em mais detalhes cada um dos passos mencionadas acima.
 
 # Obtenção dos dados
 
-Conforme o enunciado da atividade, os dados utilizados para na atividade foram obtidos da fonte <http://www.ic.unicamp.br/~zanoni/cepagri/cepagri.csv.>. 
+Conforme o enunciado da atividade, os dados utilizados para na atividade foram obtidos da fonte <http://www.ic.unicamp.br/~zanoni/cepagri/cepagri.csv>.
 
 Os arquivos foram obtidos a partir de uma conexão direta com o servidor, e carregados em um data frame fazendo uma leitura no formato CSV:
 
@@ -34,11 +37,9 @@ Os arquivos foram obtidos a partir de uma conexão direta com o servidor, e carr
 carregaArquivos
 ```
 
-Veja abaixo algumas um trecho das medidas obtidas:
+Veja abaixo um trecho das medidas obtidas:
 
 ```{r echo=FALSE}
-con <- url("http://www.ic.unicamp.br/~zanoni/cepagri/cepagri.csv") 
-cpa <- read.csv(con, header = FALSE, sep = ";",col.names = c("horario","temperatura","vento","umidade","sensacao"), as.is = TRUE, nrows = 100)  
 head(cpa)
 ```
 
@@ -54,19 +55,106 @@ Como é possível observar nos dados de entrada, há mais de uma medida por hora
 Veja um exemplo de algumas linhas da matriz:
 
 ```{r echo=FALSE}
-temperaturas = geraSeries(cpa)
-head(temperaturas)
+head(temperaturasPre, n=3L)
 ```
 
 Após gerar a matriz, o segundo passo do pré-processamento foi a eliminar valores inválidos, ou seja, aqueles com valor `NA`. Para isso, foi feito o seguinte procedimento:
 
-1. Caso o primeiro dia comece com valor `NA`, este é eliminado das séries.
-2. Caso o último dia termine com valor `NA`, este é eliminado das séries.
+1. Caso o primeiro dia comece com valor `NA`, este dia é eliminado das séries.
+2. Caso o último dia termine com valor `NA`, este dia é eliminado das séries.
 3. Para o restante dos dias, cada valor `NA` encontrado é substituído pela média dos pontos imediatamente antes e imediatamente depois.
-4. Caso sejam encontrados 2 ou mais valores `NA` em sequência, estes valores são gerados a partir de uma interpolação dos pontos imediatamente antes e imediatamente depois. 
+4. Caso sejam encontrados 2 ou mais valores `NA` em sequência, estes valores são gerados a partir de uma interpolação linear dos pontos imediatamente antes e imediatamente depois. 
 
-Terminado este passo, de pré-processamento, a matriz de 24 colunas por N linhas é retornada como resultado do pré-processamento.
+Por fim, os meses com menos de 20 dias de dados foram removidos do cálculo, pois poderiam influenciar demais no cálculo de precisão.
 
-# Cálculo da precisão das buscas
+Terminado este passo, a matriz de 24 colunas por N linhas é retornada como resultado do pré-processamento.
+
+# Busca de séries e cálculo da precisão
+
+Foi implementada uma função que, dada uma séria de temperaturas de um dia, eram retornados os resultados que mais se assemelhavam à série de acordo com uma função de distância escolhida. A função recebia como argumento:
+
+- criterio: série de temperaturas de um dia utilizada como critério de buscas
+- dias: matriz de 24 colunas e N linhas, onde as colunas são as horas do dia e as linhas são os dias
+- funcaoDistancia: função de distância a ser utilizada. Recebe dois vetores como parâmetros
+- funcaoOrdenacao: função de ordenação de resultados a ser utilizado. Recebe um vetor como parâmetro.
+- numeroRetornados: Quantidade de registros retornados
+
+A função calcula a distância entre o critério e cada um dos dias da matriz, em seguida ordenando os resultados com os mais próximos no topo do resultado. Então são retornados os M primeiros resultados, onde M é o parâmetro `numeroRetornados`. Neste exercício, o parâmetro `numeroRetornados` recebeu sempre o valor 30. Veja abaixo a função que realiza a busca da série:
+
+```{r echo=FALSE}
+buscaSeries
+```
 
 
+Uma vez retornado o resultado, é possível calcular a precisão dos 30 valores retornados (`P@30`). Assim como pede o enunciado da atividade, o critério de acerto é que séries de temperatura de dias de um mesmo mês são consideradas relevantes entre si. A função abaixo foi utilizada para calcular a precisão:
+
+```{r echo=FALSE}
+calculaPrecisao
+```
+
+A função obtemMesAno apenas extrai da data o ano e mês no formato YYYY-mm.
+
+# Cálculo das precisões médias
+
+O próximo passo foi calcular a precisão média da coleção, ou seja, foram feitas buscas e cálculos de precisão utilizando como critério cada uma das séries da coleção, e em seguida extraída a média dessas precisões. Foi feito tanto a média de precisão `P@30` por mês como a média de precisão `P@30` geral. O cálculo de precisão média foi feito com diferentes funções de distância, e a comparação entre os resultados obtidos para cada distância pode ser conferida no próximo capítulo.
+
+# Comparação dos resultados obtidos para cada uma das distâncias
+
+Para a realização das buscas foram utilizadas as seguintes funções para calcular a distância:
+
+- L1
+- L2
+- L Infinito
+- Distância de Canberra
+- Similaridade por Cosseno
+
+O gráfico abaixo compara a precisão média `P@30` por mês obtida para cada uma das funções de distância utilizada:
+
+```{r echo=FALSE}
+plot(l1, type = "l", ylab="Precisao", xlab="", xaxt="n", col="RED")
+axis(1, at=1:length(l1), labels=rownames(l1), las=2)
+par(new=T)
+plot(l2, type = "l", axes=FALSE, ylab="", xlab="", col="GREEN")
+par(new=T)
+plot(lMax, type = "l", axes=FALSE, ylab="", xlab="", col="BLUE")
+par(new=T)
+plot(lCam, type = "l", axes=FALSE, ylab="", xlab="", col="GRAY")
+par(new=T)
+plot(lCos, type = "l", axes=FALSE, ylab="", xlab="", col="MAGENTA")
+par(new=F)
+legend(3.5, 0.24, legend = c("L1", "L2", "L Inf", "Canberra", "Cosseno"), col=c("RED", "GREEN", "BLUE", "GRAY", "MAGENTA"), lty = c(1, 1, 1, 1, 1))
+```
+
+Como é possível notar no gráfico, nenhuma das funções de distância utilizada se destacou muito em relação às outras, e a precisão máxima obtida não passou de 0.25. Ou seja, independente da função de distância utilizada, a precisão do resultado apresentado é abaixo de 25%, mostrando a dificuldade de encontrar as temperaturas de um determinado mês dada a temperatura de um dia do mês. 
+
+Um outro dado interessante é que o mês de janeiro/2015 foi o que apresentou a melhor precisão. Ao analisar os dados de temperatura, é possível notar que a média de temperatura do mês de janeiro é bem mais elevada do que outros meses, e portanto, o que  tornou possível obter uma precisão melhor para este mês. Veja abaixo que janeiro é o único mês na faixa de 25 graus, enquantos para outros meses sempre há pelo menos dois meses com temperaturas próximas entre si:
+
+```{r echo=FALSE,warning=FALSE}
+mediaMensal <- sapply(split(as.numeric(cpa[["temperatura"]]), obtemAnoMes(strptime(cpa[["horario"]], "%d/%m/%Y-%H:%M"))), mean, na.rm=TRUE)
+data.frame(mediaMensal)
+```
+
+Por fim, podemos também comparar a precisão média geral `P@30` para cada uma das distâncias, independente do mês avaliado:
+
+```{r echo=FALSE}
+names(medias) <- c("L1", "L2", "LInf", "Canberra", "Cosseno")
+medias
+```
+
+Note que L infinito foi um pouco mais eficaz do que as outras medidas de distância, o que talvez seja um indício de que é mais eficaz comparar temperaturas diárias utilizando apenas a temperatura mais alta ao invés de levar em consideração todas as temperaturas do dia.
+
+# Dificuldades enfrentadas
+
+Foram duas as principais dificuldades enfrentadas:
+
+- A realização do pré-processamento dos dados é uma parte do trabalho que necessita de uma análise intensa e um esforço considerável. Isso ocorre porque é necessário conhecer os dados para fazer o pré-processamento, assim sendo possível eliminar dados que possam prejudicar o resultado e determinar um método para adicionar valores que não tenham sido informados, mas que são importantes para o processamento. Além disso, há diversos casos diferentes a serem tratados que são totalmente dependentes de situações específicas que talvez só sejam notadas com o recebimento de novos dados. Um exemplo em relação a isso: grande parte deste relatório foi feita durante o final do mês de setembro, quando todos os meses analisados tinham mais de 25 dias de dados. Ao finalizar o relatório, em outubro, já havia alguns poucos dias do novo mês, e então ao executar o algoritmo novamente, a precisão `P@30` de outubro era consideravelmente maior que os outros dias. Isso se deu ao fato de que outubro tinha apenas três dias para serem avaliados. Para evitar esse problema, foi adicionada uma nova etapa que retirava dos dados os meses com menos de 20 dias.
+- Independente da função de distância utilizada, nenhuma das precisões `P@30` obtida foi consideravelmente boa, sendo que isso não era conhecido antes de iniciarmos a análise. Isto demostra que nem sempre é trivial, ou mesmo possível, chegar a uma boa eficácia dos resultados para certas situações.
+
+
+# Conclusão
+
+Pode-se concluir que ao iniciar um trabalho na área de recuperação de informação, é bastante difícil saber no início se será possível chegar a um resultado satisfatório. 
+
+Neste caso específico das temperaturas, é possível pensar intuitivamente que um determinado mês possui temperaturas bem semelhantes a outros meses próximos, e essa proximidade da temperatura se torna ainda maior em países como o Brasil em que a temperatura não tem variações extremas ao longo do ano. Estes fatores são um indício que, de fato, a recuperação de temperaturas de um mesmo mês não é um trabalho tão simples.
+
+Talvez com uma análise mais profunda e a utilização de outras técnicas fosse possível chegar em uma eficácia maior. Um exemplo do que poderia ser feito é utilizar outras características da temperatura diária no modelo vetorial, tal como a média, mediana, máxima e mínima do dia, dentre outros valores. Ou ainda, se aceitável, substituir o critério de relevância: ao invés de considerar temperaturas de um mesmo mês como relevantes entre si, considerar todas as temperaturas de uma mesma estação do ano Poderíamos também usar outras variáveis do Cepagri na criação do modelo como, por exemplo, as medidas de vento e sensação térmica. Mesmo assim, isto não garante que os resultados obtidos seriam bons.
