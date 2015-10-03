@@ -1,3 +1,6 @@
+# INF-611 - Juntando Dados - Relat??rio da Atividade ?? Dist??ncia
+# Alunos - Paulo Sigrist / Rafael Sangalli
+
 # Carrega localmente as medidas de temperatura
 #
 # Returns:
