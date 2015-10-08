@@ -1,0 +1,33 @@
+---
+title: "INF-612 Handling Data"
+author: "Paulo Sigrist / Rafael Sangalli"
+date: "October 7, 2015"
+output: html_document
+---
+
+
+```{r, echo=FALSE, warning=FALSE}
+source("trabalho.r")
+cpa = loadAndFilterData()
+```
+
+**Média de temperatura por mes:**
+
+```{r}
+meanByMonth
+```
+
+```{r, echo=FALSE}
+meanByMonth(cpa)
+```
+
+
+**Alteração da temperatura dia após dia:**
+
+```{r}
+temperatureByDay
+```
+
+```{r, echo=FALSE}
+temperatureByDay(cpa)
+```
