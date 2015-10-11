@@ -2,32 +2,153 @@
 title: "INF-612 Handling Data"
 author: "Paulo Sigrist / Rafael Sangalli"
 date: "October 7, 2015"
-output: html_document
+output: pdf_document
 ---
 
-
-```{r, echo=FALSE, warning=FALSE}
+```{r, warning=FALSE,echo=FALSE}
+# Carregar a biblioteca knitr para relatorios e o script com as funcoes
+library("knitr")
 source("trabalho.r")
+```
+
+# Carregando os dados:
+O primeiro passo é carregar os dados no formato CSV. Nesse processo, o período já é filtrado para o período desejado:
+```{r, warning=FALSE}
 cpa = loadAndFilterData()
 ```
 
-**Média de temperatura por mes:**
+Abaixo, o resultado com os primeiros registros:
+```{r, warning=FALSE, echo=FALSE}
+xx <- head(cpa)
+# Converte para string
+xx[,1] <- as.character(xx[,1])
+kable(xx, format="markdown")
+```
 
-```{r}
+E agora os últimos registros:
+```{r, warning=FALSE, echo=FALSE}
+xx <- tail(cpa)
+# Converte para string
+xx[,1] <- as.character(xx[,1])
+kable(xx, format="markdown")
+```
+
+# Análises:
+
+Após a obteção dos dados, fizemos as seguintes análises:
+
+ * Média de temperatura por mês
+ * Comparadação da evolução da temperatura por dia a cada mês
+ * Histograma das medidas por estação do ano
+
+
+## Média de temperatura por mes:
+
+Nessa análise, utilizamos a função `tapply` para calcular a média da temperatura por mês. Utilizamos o parametro `na.rm = TRUE` para ignorar valores _NA_. Para adicionar o nome dos meses no resultado do cálculo, utilizamos a função `months`  e atribuimos ao `rownames` do resultado. Abaixo está o código completo da função `meanByMonth`:
+
+```{r, echo=FALSE}
 meanByMonth
 ```
 
+Podemos observar nesse gráfico que a temperatura cai por volta de 5 graus nos meses de inverno.
 ```{r, echo=FALSE}
 meanByMonth(cpa)
 ```
 
 
-**Alteração da temperatura dia após dia:**
+## Evolução da temperatura dia após dia:
 
+Nessa análise, podemos observar a evolução da temperatura por dia, a cada mês.
+
+Para efetuar esse cálculo, foram criadas duas funções auxiliares, `dataByMonth` e `meanByDay`. A primeira irá retornar somente dados do `cpa` do mês especificado. A segunda irá calcular a média da temperatura por dia. Abaixo o código das duas funções:
+
+```{r}
+dataByMonth
+meanByDay
+```
+
+Agora podendo calcular a média de temperatura por dia para cada mês, temos que aplicar isso no nosso data frame `cpa`. Para isso, criamos um array de 0 até 11 e com a função `sapply` calculamos o resultado.
+
+Plotamos um gráfico e depois novamente utilizando a função `sapply` adicionamos as linhas dos resultados no gráfico. Abaixo o código fonte da função:
 ```{r}
 temperatureByDay
 ```
 
+O resultado final é o gráfico abaixo:
+
+
 ```{r, echo=FALSE}
 temperatureByDay(cpa)
 ```
+
+
+## Histogramas por estação do ano:
+
+Nessa análise, plotamos um historiograma para cada medida obtida (temperatura, sensação, vento e umidade) para cada estação do ano. Para agrupar os dados por estação, foi criada uma função chamada `dataBySeason` onde criamos uma estrutura que contém os dados agrupados pelas quatro estações do ano. Abaixo está o código da função:
+```{r}
+dataBySeason
+```
+
+Foi criada uma função genérica para plotar um historiograma de um array de dados, onde passamos alguns valores, como o array de dados, título do gráfico, label do eixo X e cores do gráfico. Abaixo está o código da função `histogramByValue`:
+
+```{r}
+histogramByValue
+```
+
+Com essas duas funções, podemos agora os histogramas para análise
+
+```{r, echo=FALSE,warning=FALSE}
+# Obter os dados agrupados por estacao
+x <- dataBySeason(cpa) 
+
+# Tamanho padra dos graficos no relatorio
+defaultWidth <- 3
+defaultHeight <- 3
+```
+
+### Inverno
+
+```{r fig.width=defaultWidth, fig.height=defaultHeight,warning=FALSE,echo=FALSE}
+histogramByValue(x$inverno$temperatura, "Temperatura")
+histogramByValue(x$inverno$sensacao, "Sensacao")
+histogramByValue(x$inverno$vento, "Vento")
+histogramByValue(x$inverno$umidade, "Umidade")
+```
+
+Podemos observar que no inverno, a temperatura se concentrou entre 15 e 20 graus e a sensação ficou um pouco abaixo, entre 10 e 15 graus e tivemos uma umidade alta.
+
+### Primavera
+```{r fig.width=defaultWidth, fig.height=defaultHeight,,warning=FALSE,echo=FALSE}
+histogramByValue(x$primavera$temperatura, "Temperatura")
+histogramByValue(x$primavera$sensacao, "Sensacao")
+histogramByValue(x$primavera$vento, "Vento")
+histogramByValue(x$primavera$umidade, "Umidade")
+```
+
+Já na primavera, a temperatura foi mais elevada, ficando entre 20 e 25 graus por mais vezes. Já a sensação ficou entre 18 e 23 graus.
+
+### Verão
+```{r fig.width=defaultWidth, fig.height=defaultHeight,,warning=FALSE,echo=FALSE}
+histogramByValue(x$verao$temperatura, "Temperatura")
+histogramByValue(x$verao$sensacao, "Sensacao")
+histogramByValue(x$verao$vento, "Vento")
+histogramByValue(x$verao$umidade, "Umidade")
+```
+
+A temperatura do verão foi um pouco mais alta que a primavera, e ficou entre 25 e 30 graus, mas com uma umidade bem alta.
+
+### Outono
+```{r fig.width=defaultWidth, fig.height=defaultHeight,,warning=FALSE,echo=FALSE}
+histogramByValue(x$outono$temperatura, "Temperatura")
+histogramByValue(x$outono$sensacao, "Sensacao")
+histogramByValue(x$outono$vento, "Vento")
+histogramByValue(x$outono$umidade, "Umidade")
+```
+
+No outono já tivemos temperaturas mais baixas, concentrando sua variação entre 15 e 22 graus e uma umidade bem alta.
+
+# Conclusão
+
+Para poder fazer análises dos dados em _R_, a maior parte do trabalho está em preparar os dados para serem analisados. Os maiores desafios encontrados foram conversão de tipos de dados (_string_ para inteiro, _string_ para data), agrupar os dados de forma que faça sentido (exemplo, agrupar os dados por estações do ano), tratar dados que estão faltando (valores _NA_)
+
+Depois que o prepara dos dados foi finalizada, a criação dos gráficos foi mais simples, tendo apenas que tomar cuidado com a sintaxe que cada tipo de gráfico precisa.
