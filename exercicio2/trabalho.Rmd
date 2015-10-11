@@ -38,7 +38,7 @@ kable(xx, format="markdown")
 Após a obteção dos dados, fizemos as seguintes análises:
 
  * Média de temperatura por mês
- * Comparadação da evolução da temperatura por dia a cada mês
+ * Comparação da evolução da temperatura por dia a cada mês
  * Histograma das medidas por estação do ano
 
 
